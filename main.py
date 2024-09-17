@@ -8,7 +8,7 @@ This password manager project gets the input of a certain website, the email and
 It saves this information to a data.txt file, where it can be accessed to read.
 It can also generate a password and copy it to the clipboard.
 """
-
+import json
 from random import randint
 from tkinter import *
 from tkinter import messagebox
@@ -57,27 +57,68 @@ def save():
     """
 
     # Get the data from the entry widgets
-    website_name = website_entry.get()
+    website = website_entry.get().title()
     email = email_entry.get()
     password = password_entry.get()
 
     # If all fields are not empty, it'll ask the user to save the data
-    if len(website_name) and len(email) and len(password):
+    if len(website) and len(email) and len(password):
 
-        is_ok = messagebox.askokcancel(title=website_name, message=f"These are the details entered:\nEmail: {email}\nPassword: {password}\nIs this ok to save?")
+        # Save the data into a dictionary
+        new_data = {
+            website: {
+                "email": email,
+                "password": password,
+            }
+        }
 
-        if is_ok:
-            with open("data.txt", mode="a") as data:
-                # Write the data
-                data.write(f"{website_name} | {email} | {password}\n")
+        # Try to open the json file
+        try:
+            with open("data.json", mode="r") as data_file:
+                # Read old data
+                data = json.load(data_file)
+        # If it doesn't exist save the data into the data variable and create a new file
+        except FileNotFoundError:
+            # Create a file data.json and dump the data
+            with open("data.json", mode="w") as data_file:
+                # Save new updated data
+                json.dump(new_data, data_file, indent=4)
+        # If the file exist, we will update the data with new data
+        else:
+            # Update old data with new data
+            data.update(new_data)
 
-                # Delete the data
-                website_entry.delete(0, END)
-                password_entry.delete(0, END)
+            # Open a file data.json and dump the data
+            with open("data.json", mode="w") as data_file:
+                # Save new updated data
+                json.dump(data, data_file, indent=4)
+        finally:
+            # Empty the fields
+            website_entry.delete(0, END)
+            password_entry.delete(0, END)
 
     # Asks the user to fill all the fields
     else:
         messagebox.showinfo(title="Missing data!", message="Sorry, make sure you didn't leave any field empty!")
+
+def search_data():
+    # Get the website name
+    website = website_entry.get().title()
+
+    try:
+        with open("data.json", mode="r") as data_file:
+            # Load the json data file
+            data = json.load(data_file)
+
+        # Save the data in variables
+        email = data[website]["email"]
+        password = data[website]["password"]
+
+        messagebox.showinfo(title=website, message=f"Email: {email}\nPassword: {password}")
+    except KeyError:
+        messagebox.showinfo(title="No data found", message=f"There's no data for the {website} website")
+    except FileNotFoundError:
+        messagebox.showinfo(title="No data file found", message="No data file found.")
 
 # New window titled Password Manager
 window = Tk()
@@ -97,9 +138,13 @@ website_label = Label(text="Website:")
 website_label.grid(row=1, column=0)
 
 # Website entry
-website_entry = Entry(width=35)
-website_entry.grid(row=1, column=1, columnspan=2, sticky="ew")
+website_entry = Entry(width=21)
+website_entry.grid(row=1, column=1, sticky="ew")
 website_entry.focus()
+
+# Search website button
+search_website_button = Button(text="Search", command=search_data)
+search_website_button.grid(row=1, column=2, sticky="ew")
 
 # Email label
 email_label = Label(text="Email/Username:")
@@ -108,7 +153,6 @@ email_label.grid(row=2, column=0)
 # Email entry
 email_entry = Entry(width=35)
 email_entry.grid(row=2, column=1, columnspan=2, sticky="ew")
-email_entry.insert(0, "testing@email.com")
 
 # Password label
 password_label = Label(text="Password:")
@@ -120,7 +164,7 @@ password_entry.grid(row=3, column=1, sticky="ew")
 
 # Generate password button
 password_button = Button(text="Generate Password", command=generate_password)
-password_button.grid(row=3, column=2)
+password_button.grid(row=3, column=2, sticky="ew")
 
 # Generate password button
 password_button = Button(text="Add", width=36, command=save)
